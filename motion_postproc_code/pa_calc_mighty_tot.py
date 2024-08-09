@@ -61,10 +61,12 @@
 
 import time
 from datetime import datetime, timezone
+import json
 import numpy as np
 # import pandas as pd
 # import pytz
 import h5py
+import pyarrow
 from pyarrow import csv
 
 # ****************************************************************************
@@ -784,7 +786,32 @@ class ThreeClassStats:
             printToPrintBuffer("ERROR: ThreeClassStats.calculateTime() Cannot calculate time. countTotal = 0 or countTotalPct < 1. Did you run countClasses() and calculatePercentage() first?")
 
 
+    # JO: adapting this function to prepare a json format output.
     def printThreeClassStats(self):
+
+        threeClassStatsStringDict = {
+                "Counts": {
+                    "total": self.countTotal,
+                    "sedentary": self.countSedentary,
+                    "light": self.countLight,
+                    "MV": self.countMV,
+                    "undefined": self.countUndefined
+                    },
+                "Percent": {
+                    "total": self.countTotalPct,
+                    "sedentary": self.countSedentaryPct,
+                    "light": self.countLightPct,
+                    "MV": self.countMVPct,
+                    "undefined": self.countUndefinedPct
+                    },
+                "Time (min)": {
+                    "total": self.timeTotalSec/60.0,
+                    "sedentary": self.timeSedentarySec/60.0,
+                    "light": self.timeLightSec/60.0,
+                    "MV": self.timeMVSec/60.0,
+                    "undefined": self.timeUndefinedSec/60.0
+                    }
+                }
 
         countsHeaderStr = "\nCounts\ntotal\tsedentary\tlight\tMV\tundefined\n"
         countsDataStr = str(self.countTotal) + "\t" + str(self.countSedentary) + "\t" + str(self.countLight) + "\t" + str(self.countMV) + "\t" + str(self.countUndefined)
@@ -793,12 +820,12 @@ class ThreeClassStats:
         pctDataStr = str(self.countTotalPct) + "\t" + str(self.countSedentaryPct) + "\t" + str(self.countLightPct) + "\t" + str(self.countMVPct) + "\t" + str(self.countUndefinedPct)
 
         timeHeaderStr = "\nTime (min)\ntotal\tsedentary\tlight\tMV\tundefined\n"
-        timeDataStr = str(self.timeTotalSec/60.0) + "\t" + str(self.timeSedentarySec/60.0) + "\t" + str(self.timeLightSec/60.0) + "\t" + str(self.timeMVSec/60.0) + "\t" + str(self.timeUndefinedSec/60.0) 
+        timeDataStr = str(self.timeTotalSec/60.0) + "\t" + str(self.timeSedentarySec/60.0) + "\t" + str(self.timeLightSec/60.0) + "\t" + str(self.timeMVSec/60.0) + "\t" + str(self.timeUndefinedSec/60.0)
 
         allThreeClassStatsString = countsHeaderStr + countsDataStr + '\n' + pctHeaderStr + pctDataStr + '\n' + timeHeaderStr + timeDataStr
         printToPrintBuffer(allThreeClassStatsString)
 
-        return allThreeClassStatsString
+        return threeClassStatsStringDict
 
 
 # @brief Compare and see if the two classification codes (floats) are equal
@@ -960,15 +987,23 @@ def writeSummaryStatsToFile(toWriteStr, outputDirStr, fNameStr, fNameAppendStr, 
 def writeActivityBoutsToFile(myGroupedActivityRegionsObject, outputDirStr, fNameStr, fNameAppendStr, fExtensionStr):
 
     maxNum = myGroupedActivityRegionsObject.numDataPts
-    i = 0
-    bufferString = "start_time_sec,end_time_sec,duration_sec,classification\n"
-    while i < maxNum:
-        bufferString = bufferString + str(myGroupedActivityRegionsObject.timeStart[i,0]) + "," + str(myGroupedActivityRegionsObject.timeEnd[i,0]) + "," + str(myGroupedActivityRegionsObject.timeEnd[i,0] - myGroupedActivityRegionsObject.timeStart[i,0]) + "," + str(myGroupedActivityRegionsObject.classification[i,0]) + "\n"
-        i = i + 1
-    # printToPrintBuffer(bufferString)
-    textFileWriter = open(outputDirStr + "/" + fNameStr + "_" + fNameAppendStr + fExtensionStr, 'w')
-    textFileWriter.write(bufferString)
-    textFileWriter.close()
+    # i = 0
+    # bufferString = "start_time_sec,end_time_sec,duration_sec,classification\n"
+    # while i < maxNum:
+    #     bufferString = bufferString + str(myGroupedActivityRegionsObject.timeStart[i,0]) + "," + str(myGroupedActivityRegionsObject.timeEnd[i,0]) + "," + str(myGroupedActivityRegionsObject.timeEnd[i,0] - myGroupedActivityRegionsObject.timeStart[i,0]) + "," + str(myGroupedActivityRegionsObject.classification[i,0]) + "\n"
+    #     i = i + 1
+    # # printToPrintBuffer(bufferString)
+    # textFileWriter = open(outputDirStr + "/" + fNameStr + "_" + fNameAppendStr + fExtensionStr, 'w')
+    # textFileWriter.write(bufferString)
+    # textFileWriter.close()
+    bouts = pyarrow.table([myGroupedActivityRegionsObject.timeStart[0:maxNum, 0],
+                           myGroupedActivityRegionsObject.timeEnd[0:maxNum, 0],
+                           myGroupedActivityRegionsObject.timeEnd[0:maxNum, 0] - myGroupedActivityRegionsObject.timeStart[0:maxNum, 0],
+                           myGroupedActivityRegionsObject.classification[0:maxNum, 0]],
+                          names = ["start_time_sec", "end_time_sec", "duration_sec", "classification"])
+    csv.write_csv(bouts,
+                  outputDirStr + "/" + fNameStr + "_" + fNameAppendStr + fExtensionStr,
+                  write_options = csv.WriteOptions(include_header=False, delimiter='\t'))
 
 
 # @brief  Write the all instances of activity classifications to file
@@ -988,15 +1023,21 @@ def writeActivityAllToFile(myPhysActSeriesObject, outputDirStr, fNameStr, fNameA
 
     try:
         textFileWriteStartTime = time.process_time()
-        outSingleArray = np.hstack((myPhysActSeriesObject.time,myPhysActSeriesObject.classification))
+        # outSingleArray = np.hstack((myPhysActSeriesObject.time,myPhysActSeriesObject.classification))
+        outTable = pyarrow.table({'time': myPhysActSeriesObject.time[:,0].round(5),
+                                  'class': myPhysActSeriesObject.classification[:,0].astype('int')})
         # %.5f means non scientific, simple float number, with 5 decimal places
         # for epoch time (sec)  3 digits after decimal should be enough of precision
         # for acceleration (m/s2)  5 digits after decimal should be enough precision
-        np.savetxt(outputDirStr + "/" + fNameStr + "_" + fNameAppendStr + fExtensionStr, outSingleArray, fmt='%.5f', delimiter=',', newline='\n')
+        # np.savetxt(outputDirStr + "/" + fNameStr + "_" + fNameAppendStr + fExtensionStr, outSingleArray, fmt='%.5f', delimiter=',', newline='\n')
+        csv.write_csv(outTable,
+                      outputDirStr + "/" + fNameStr + "_" + fNameAppendStr + fExtensionStr,
+                      write_options=csv.WriteOptions(include_header=False, delimiter='\t')
+                      )
         textFileWriteEndTime = time.process_time()
         printToPrintBuffer("INFO: Time to write all instances of activity (raw): " + str(textFileWriteEndTime - textFileWriteStartTime) + " seconds")
-    except:
-        printToPrintBuffer("ERROR: Failed to write instances of activity (raw) to file")
+    except BaseException as e:
+        printToPrintBuffer(f"ERROR: Failed to write instances of activity (raw) to file; {str(e)}")
 
 
 # @brief  Write the string for the error log to file
@@ -1209,16 +1250,18 @@ def processDataSaveResults(fileReadSensorTime, fileReadSensorAccelXYZ, computedQ
             # Output 1, summary
             printToPrintBuffer("INFO: Computing summary of results and writing to file")
             summaryStatsObject, summaryStatsString = getSummaryStatistics(accelObjectSelectedRegion)  # this is a string
-            writeSummaryStatsToFile(summaryStatsString, str(outputDir), fileNameNoExtension, fileNameAppendSummary, outputFileExtension)
+            # JO: json output prepared
+            json_object = json.dumps(summaryStatsString, indent=4)
+            writeSummaryStatsToFile(json_object, str(outputDir), fileNameNoExtension, fileNameAppendSummary, '.json')
 
             # Output 2, bouts of activity
             printToPrintBuffer("INFO: Computing bouts of activity and writing to file")
             groupedActivityRegionsObject = getGroupedActivityRegions(accelObjectSelectedRegion)  # find activity regions
-            writeActivityBoutsToFile(groupedActivityRegionsObject, str(outputDir), fileNameNoExtension, fileNameAppendBouts, outputFileExtension)
+            writeActivityBoutsToFile(groupedActivityRegionsObject, str(outputDir), fileNameNoExtension, fileNameAppendBouts, '.tsv')
 
             # Output 3, raw time/activity classification
             printToPrintBuffer("INFO: Writing all activity labels to file")
-            writeActivityAllToFile(accelObjectSelectedRegion, str(outputDir), fileNameNoExtension, fileNameAppendRaw, outputFileExtension) # accelObject PhysActSeries with index, time, accelMagLeft, accelMagRight filled in (m/s2)
+            writeActivityAllToFile(accelObjectSelectedRegion, str(outputDir), fileNameNoExtension, fileNameAppendRaw, '.tsv') # accelObject PhysActSeries with index, time, accelMagLeft, accelMagRight filled in (m/s2)
 
         else:
             printToPrintBuffer("ERROR: Cannot compute physical activity")

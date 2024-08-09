@@ -178,10 +178,8 @@ def main():
             "entropy_type": entropy_label,
             "entropy_measure": entropy_mat
             }
+    # This will be saved as PARAMETERS.json.
     json_param = json.dumps(param_outdict, indent=4)
-    with open(output_dir / 'PARAMETERS.json', 'w') as f:
-        f.write(json_param)
-        f.close()
 
     # `mainFunction()` of pacalc,, the function to calculate the physical
     # activity needs one parameter, `infantLegLengthCm`.
@@ -242,6 +240,13 @@ def main():
             path_kinematics.mkdir(parents=True, exist_ok=True)
             path_pa.mkdir(parents=True, exist_ok=True)
 
+            with open(tempout_dir / 'PARAMETERS.json', 'w') as param_f:
+                param_f.write(json_param)
+                param_f.close()
+
+            print(f"Positional/optional arguments provided are saved in : {tempout_dir / 'PARAMETERS.json'}")
+            print('------------------------------')
+
             # Ax6 default sampling rate is 25Hz (not consistent).
             # So downsampling / interpolating the original signal at 20 Hz
             # (sampling rate of OPAL) was discussed earlier.
@@ -262,18 +267,18 @@ def main():
                                         entropy_type=entropy_label,
                                         )
                 # After this, run mghazi's algorithm
-                suffix = ['LeftLeg', 'RightLeg']
+                suffix = ['leg-left', 'leg-right']
                 if pa_side is not None:
                     if pa_side == 'l':
-                        suffix = ['LeftLeg']
+                        suffix = ['leg-left']
                     elif pa_side == 'r':
-                        suffix = ['RightLeg']
+                        suffix = ['leg-right']
 
                 if computedQttyOption is not None:
                     for sfx in suffix:
                         pacalc.mainFunction(tempout_dir,
-                                            '_'.join((sub,ses,sfx,'motion_calib_res20')),
-                                            '_'.join((sub,ses,sfx,computedQttyOption)),
+                                            '_'.join((sub,ses,sfx,'desc-calibrated_recording-20_motion')),
+                                            '_'.join((sub,ses,sfx,f'desc-{computedQttyOption}PA')),
                                             computedQttyOption,
                                             infantLegLengthCmDict[sub_age])
                 else:
@@ -283,8 +288,8 @@ def main():
                             # outputFileNameNoExtension, computedQttyOption,
                             # infantLegLengthCm
                             pacalc.mainFunction(tempout_dir,
-                                                '_'.join((sub,ses,sfx,'motion_calib_res20')),
-                                                '_'.join((sub,ses,sfx,computedQttyOption)),
+                                                '_'.join((sub,ses,sfx,'desc-calibrated_recording-20_motion')),
+                                                '_'.join((sub,ses,sfx,f'desc-{computedQttyOption}PA')),
                                                 computedQttyOption,
                                                 infantLegLengthCmDict[sub_age])
 

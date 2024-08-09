@@ -153,8 +153,14 @@ def calc_stats(tsvdir, outdir, sub, ses,
     # (7/22/24) write some preprocessed files...
     # 1) calibrated accelerometer files
     g_val = 9.80665
-    leftleg_calib_tsv = final_outdir / ('_'.join((sub, ses, 'LeftLeg', 'motion', 'calibrated'))+'.tsv')
-    rightleg_calib_tsv = final_outdir / ('_'.join((sub, ses, 'RightLeg', 'motion', 'calibrated'))+'.tsv')
+    leftleg_calib_tsv = final_outdir / ('_'.join((sub, ses, 'leg-left',
+                                                  'desc-calibrated',
+                                                  f'recording-{fs}',
+                                                  'motion'))+'.tsv')
+    rightleg_calib_tsv = final_outdir / ('_'.join((sub, ses, 'leg-right',
+                                                   'desc-calibrated',
+                                                   f'recording-{fs}',
+                                                   'motion'))+'.tsv')
     write_option = pacsv.WriteOptions(include_header=False, delimiter='\t')
     # No resampling done; use ax6proc.l_timevec and ax6proc.r_timevec
     # Remember that l_timevec and r_timevec are each 'elapsed_time' of
@@ -176,15 +182,21 @@ def calc_stats(tsvdir, outdir, sub, ses,
     pacsv.write_csv(right_pa_table, rightleg_calib_tsv,
                     write_options=write_option)
 
-    print('+------------------------------------------------------+')
-    print('+  Calibrated accelerometer data exported:             +')
-    print(f'+   {sub}_{ses}_LeftLeg_motion_calibrated.tsv   +')
-    print(f'+   {sub}_{ses}_RightLeg_motion_calibrated.tsv  +')
-    print('+------------------------------------------------------+')
+    print('+-------------------------------------------------------------------------+')
+    print('+  Calibrated accelerometer data exported:                                +')
+    print(f'+   {sub}_{ses}_leg-left_desc-calibrated_recording-{fs}_motion.tsv   +')
+    print(f'+   {sub}_{ses}_leg_right_desc-calibrated_recording-{fs}_motion.tsv  +')
+    print('+-------------------------------------------------------------------------+')
 
     # 2) calibrated + resampled accelerometer files
-    leftleg_calib_re20_tsv = final_outdir / ('_'.join((sub, ses, 'LeftLeg', 'motion', 'calib_res20'))+'.tsv')
-    rightleg_calib_re20_tsv = final_outdir / ('_'.join((sub, ses, 'RightLeg', 'motion', 'calib_res20'))+'.tsv')
+    leftleg_calib_re20_tsv = final_outdir / ('_'.join((sub, ses, 'leg-left',
+                                                       'desc-calibrated',
+                                                       'recording-20',
+                                                       'motion'))+'.tsv')
+    rightleg_calib_re20_tsv = final_outdir / ('_'.join((sub, ses, 'leg-right',
+                                                        'desc-calibrated',
+                                                        'recording-20',
+                                                        'motion'))+'.tsv')
     # place the 'elapsed time' vector... 0.05 = 1/20
     time_l_20 = np.arange(0, np.shape(ax6proc._Ax6__acc20[0])[0]*0.05, 0.05)
     time_r_20 = np.arange(0, np.shape(ax6proc._Ax6__acc20[1])[0]*0.05, 0.05)
@@ -204,11 +216,11 @@ def calc_stats(tsvdir, outdir, sub, ses,
     pacsv.write_csv(right_pa_table_re20, rightleg_calib_re20_tsv,
                     write_options=write_option)
 
-    print('+------------------------------------------------------+')
-    print('+  Calibrated, resampled accelerometer data exported:  +')
-    print(f'+   {sub}_{ses}_LeftLeg_motion_calib_res20.tsv  +')
-    print(f'+   {sub}_{ses}_RightLeg_motion_calib_res20.tsv +')
-    print('+------------------------------------------------------+')
+    print('+-------------------------------------------------------------------------+')
+    print('+  Calibrated, resampled accelerometer data exported:                     +')
+    print(f'+   {sub}_{ses}_leg-left_desc-calibrated_recording-20_motion.tsv   +')
+    print(f'+   {sub}_{ses}_leg-right_desc-calibrated_recording-20_motion.tsv  +')
+    print('+-------------------------------------------------------------------------+')
 
     print('------------------------------')
     print('Preprocessing Completed.\nKinematic variables are going to be calculated')
@@ -295,7 +307,8 @@ def save_kinematics_summary(final_outdir, sub, ses, ax6obj, kinematics,
     -------
         None (saves a .json file in final_outdir / 'Kinematics')
     """
-    outname_json = final_outdir / 'Kinematics' / ('_'.join((sub, ses, 'motion', str(ax6obj.info.fs)))+'.json')
+    outname_json = (final_outdir / 'Kinematics' / 
+                    ('_'.join((sub, ses, f'desc-kinematics_recording-{ax6obj.info.fs}', 'motion'))+'.json'))
     avgaccel_L_arr = kinematics['accs'][:, 1]
     avgaccel_R_arr = kinematics['accsr'][:, 1]
     pkaccel_L_arr = kinematics['accs'][:, 2]
