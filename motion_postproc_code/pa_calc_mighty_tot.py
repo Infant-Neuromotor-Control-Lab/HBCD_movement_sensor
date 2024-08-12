@@ -276,7 +276,8 @@ def loadDataFromPIDFFile(thisFilePath):
 # [JO] pyarrow module (arrow.apache.org/docs/python/index.html)
 # is faster in reading large files. 
 def loadDataFromTsvFile(thisFilePath):
-    read_options = csv.ReadOptions(autogenerate_column_names=True)
+    read_options = csv.ReadOptions(autogenerate_column_names=True,
+                                   skip_rows_after_names=1)
     parse_options = csv.ParseOptions(delimiter='\t')
 
     # tsvRead = np.loadtxt(thisFilePath, delimiter='\t', dtype=float)
@@ -1003,7 +1004,7 @@ def writeActivityBoutsToFile(myGroupedActivityRegionsObject, outputDirStr, fName
                           names = ["start_time_sec", "end_time_sec", "duration_sec", "classification"])
     csv.write_csv(bouts,
                   outputDirStr + "/" + fNameStr + "_" + fNameAppendStr + fExtensionStr,
-                  write_options = csv.WriteOptions(include_header=False, delimiter='\t'))
+                  write_options = csv.WriteOptions(include_header=True, delimiter='\t'))
 
 
 # @brief  Write the all instances of activity classifications to file
@@ -1024,7 +1025,7 @@ def writeActivityAllToFile(myPhysActSeriesObject, outputDirStr, fNameStr, fNameA
     try:
         textFileWriteStartTime = time.process_time()
         # outSingleArray = np.hstack((myPhysActSeriesObject.time,myPhysActSeriesObject.classification))
-        outTable = pyarrow.table({'time': myPhysActSeriesObject.time[:,0].round(5),
+        outTable = pyarrow.table({'epoch_time': myPhysActSeriesObject.time[:,0].round(5),
                                   'class': myPhysActSeriesObject.classification[:,0].astype('int')})
         # %.5f means non scientific, simple float number, with 5 decimal places
         # for epoch time (sec)  3 digits after decimal should be enough of precision
@@ -1032,7 +1033,7 @@ def writeActivityAllToFile(myPhysActSeriesObject, outputDirStr, fNameStr, fNameA
         # np.savetxt(outputDirStr + "/" + fNameStr + "_" + fNameAppendStr + fExtensionStr, outSingleArray, fmt='%.5f', delimiter=',', newline='\n')
         csv.write_csv(outTable,
                       outputDirStr + "/" + fNameStr + "_" + fNameAppendStr + fExtensionStr,
-                      write_options=csv.WriteOptions(include_header=False, delimiter='\t')
+                      write_options=csv.WriteOptions(include_header=True, delimiter='\t')
                       )
         textFileWriteEndTime = time.process_time()
         printToPrintBuffer("INFO: Time to write all instances of activity (raw): " + str(textFileWriteEndTime - textFileWriteStartTime) + " seconds")

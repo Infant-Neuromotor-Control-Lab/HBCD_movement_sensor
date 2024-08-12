@@ -153,42 +153,53 @@ def calc_stats(tsvdir, outdir, sub, ses,
     # (7/22/24) write some preprocessed files...
     # 1) calibrated accelerometer files
     g_val = 9.80665
-    leftleg_calib_tsv = final_outdir / ('_'.join((sub, ses, 'leg-left',
-                                                  'desc-calibrated',
-                                                  f'recording-{fs}',
-                                                  'motion'))+'.tsv')
-    rightleg_calib_tsv = final_outdir / ('_'.join((sub, ses, 'leg-right',
-                                                   'desc-calibrated',
-                                                   f'recording-{fs}',
-                                                   'motion'))+'.tsv')
-    write_option = pacsv.WriteOptions(include_header=False, delimiter='\t')
-    # No resampling done; use ax6proc.l_timevec and ax6proc.r_timevec
-    # Remember that l_timevec and r_timevec are each 'elapsed_time' of
-    # the left and the right sensor, respectively.
-    # The interval between the two adjacent points would be 'approximately'
-    # 0.04 seconds, but never guaranteed.
-    left_pa_table = pyarrow.table([ax6proc.l_timevec,
-                                   ax6proc.calibrated[0][:, 0] * g_val,
-                                   ax6proc.calibrated[0][:, 1] * g_val,
-                                   ax6proc.calibrated[0][:, 2] * g_val],
-                                  names=["Time", "L-x", "L-y", "L-z"])
-    right_pa_table = pyarrow.table([ax6proc.r_timevec,
-                                    ax6proc.calibrated[1][:, 0] * g_val,
-                                    ax6proc.calibrated[1][:, 1] * g_val,
-                                    ax6proc.calibrated[1][:, 2] * g_val],
-                                   names=["Time", "R-x", "R-y", "R-z"])
-    pacsv.write_csv(left_pa_table, leftleg_calib_tsv,
-                    write_options=write_option)
-    pacsv.write_csv(right_pa_table, rightleg_calib_tsv,
-                    write_options=write_option)
 
-    print('+-------------------------------------------------------------------------+')
-    print('+  Calibrated accelerometer data exported:                                +')
-    print(f'+   {sub}_{ses}_leg-left_desc-calibrated_recording-{fs}_motion.tsv   +')
-    print(f'+   {sub}_{ses}_leg_right_desc-calibrated_recording-{fs}_motion.tsv  +')
-    print('+-------------------------------------------------------------------------+')
+    # Options for writing tsv files (accelerations)
+    write_option = pacsv.WriteOptions(include_header=True, delimiter='\t')
+    left_column_names = ["imu_latency", "LeftAnkle_Accel_x",
+                         "LeftAnkle_Accel_y", "LeftAnkle_Accel_z"]
+    right_column_names = ["imu_latency", "RightAnkle_Accel_x",
+                          "RightAnkle_Accel_y", "RightAnkle_Accel_z"]
 
-    # 2) calibrated + resampled accelerometer files
+    # Do this if you're asked to adjust the interval
+    if kwargs.get('fs_handling') == 'corrected':
+        leftleg_calib_tsv = final_outdir / ('_'.join((sub, ses, 'leg-left',
+                                                      'desc-calibrated',
+                                                      f'recording-{fs}',
+                                                      'motion'))+'.tsv')
+        rightleg_calib_tsv = final_outdir / ('_'.join((sub, ses, 'leg-right',
+                                                       'desc-calibrated',
+                                                       f'recording-{fs}',
+                                                       'motion'))+'.tsv')
+        # No resampling done; use ax6proc.l_timevec and ax6proc.r_timevec
+        # Remember that l_timevec and r_timevec are each 'elapsed_time' of
+        # the left and the right sensor, respectively.
+        # The interval between the two adjacent points would be 'approximately'
+        # 0.04 seconds, but never guaranteed.
+        left_pa_table = pyarrow.table([ax6proc.l_timevec,
+                                       ax6proc.calibrated[0][:, 0] * g_val,
+                                       ax6proc.calibrated[0][:, 1] * g_val,
+                                       ax6proc.calibrated[0][:, 2] * g_val],
+                                      names=left_column_names)
+        right_pa_table = pyarrow.table([ax6proc.r_timevec,
+                                        ax6proc.calibrated[1][:, 0] * g_val,
+                                        ax6proc.calibrated[1][:, 1] * g_val,
+                                        ax6proc.calibrated[1][:, 2] * g_val],
+                                       names=right_column_names)
+        pacsv.write_csv(left_pa_table, leftleg_calib_tsv,
+                        write_options=write_option)
+        pacsv.write_csv(right_pa_table, rightleg_calib_tsv,
+                        write_options=write_option)
+
+        print('+-------------------------------------------------------------------------+')
+        print('+  Calibrated accelerometer data exported:                                +')
+        print(f'+   {sub}_{ses}_leg-left_desc-calibrated_recording-{fs}_motion.tsv   +')
+        print(f'+   {sub}_{ses}_leg_right_desc-calibrated_recording-{fs}_motion.tsv  +')
+        print('+-------------------------------------------------------------------------+')
+
+        del left_pa_table, right_pa_table
+
+    # calibrated + resampled accelerometer files
     leftleg_calib_re20_tsv = final_outdir / ('_'.join((sub, ses, 'leg-left',
                                                        'desc-calibrated',
                                                        'recording-20',
@@ -204,13 +215,12 @@ def calc_stats(tsvdir, outdir, sub, ses,
                                         ax6proc._Ax6__acc20[0][:, 0] * g_val,
                                         ax6proc._Ax6__acc20[0][:, 1] * g_val,
                                         ax6proc._Ax6__acc20[0][:, 2] * g_val],
-                                       # names don't matter - not saved
-                                       names=["Time", "L-x", "L-y", "L-z"])
+                                       names=left_column_names)
     right_pa_table_re20 = pyarrow.table([time_r_20,
                                          ax6proc._Ax6__acc20[1][:, 0] * g_val,
                                          ax6proc._Ax6__acc20[1][:, 1] * g_val,
                                          ax6proc._Ax6__acc20[1][:, 2] * g_val],
-                                        names=["Time", "R-x", "R-y", "R-z"])
+                                        names=right_column_names)
     pacsv.write_csv(left_pa_table_re20, leftleg_calib_re20_tsv,
                     write_options=write_option)
     pacsv.write_csv(right_pa_table_re20, rightleg_calib_re20_tsv,
@@ -226,8 +236,8 @@ def calc_stats(tsvdir, outdir, sub, ses,
     print('Preprocessing Completed.\nKinematic variables are going to be calculated')
     print('------------------------------')
 
-    # Erase variables to free up some space
-    del left_pa_table, right_pa_table, left_pa_table_re20, right_pa_table_re20
+    # Erase variables to free up some space (Don't think that useful but...)
+    del left_pa_table_re20, right_pa_table_re20
 
     def calc_kinematics(ax6obj):
         fs = ax6obj.info.fs
@@ -329,7 +339,8 @@ def save_kinematics_summary(final_outdir, sub, ses, ax6obj, kinematics,
         feed = [pkaccel_L_arr, pkaccel_R_arr]
         feed_label = ['Left_peak_acc', 'Right_peak_acc']
     else:
-        raise ValueError("entropy_measure is 'avgacc' or 'pkacc'")
+        raise ValueError(f"entropy_measure is 'avgacc' or 'pkacc'. \
+User input: {entropy_measure}")
 
     if entropy_type is None:
         fuzzTrue = [False, True]
@@ -341,7 +352,8 @@ def save_kinematics_summary(final_outdir, sub, ses, ax6obj, kinematics,
         fuzzTrue = [True]
         entype_label = ['FuzzEn']
     else:
-        raise ValueError("entropy_type is 'SampEn' or 'FuzzEn'")
+        raise ValueError(f"entropy_type is 'SampEn' or 'FuzzEn'. \
+User input: {entropy_type}")
 
     # Entropy calculated for both the left and the right leg data
     # If both 'entropy_measure' and 'entropy_type' are None,
