@@ -45,6 +45,8 @@ Optional Arguments:
     --entropy_type, --entropy-type              a specific entropy type to be calculated ('SampEn' or 'FuzzEn')
 
     --entropy_measure, --entropy-measure        which measure to calculate an entropy ('avgacc' or 'pkacc')
+
+    --stop_on_error, --stop-on-error        if activated, the code will try to exit when an error is encountered
 """
 from pathlib import Path
 import json
@@ -68,7 +70,7 @@ def build_parser():
     parser = argparse.ArgumentParser(description=help_msg,
                                      epilog="Prepared by Jinseok Oh, Ph.D.")
     parser.add_argument("bids_dir", help="The path to the BIDS directory for your study (this is the same for all subjects)", type=str)
-    parser.add_argument("output_dir", help="The path to the folder where outputs will be stored (this is the same for all subjects", type=str)
+    parser.add_argument("output_dir", help="The path to the folder where outputs will be stored (this is the same for all subjects)", type=str)
     parser.add_argument("analysis_level", help="Should always be participant", type=str)
     # (7/18/24) dropping `study_tz`
     # parser.add_argument("study_tz", help="Timezone of the site where sensors were configured (ex. US/Pacific)", type=str)
@@ -80,6 +82,7 @@ def build_parser():
     parser.add_argument('--pa_side', '--pa-side', help="(optional) which leg to calculate the physical activity level (Left/L or Right/R)", type=str)
     parser.add_argument('--entropy_type', '--entropy-type', help="(optional) Entropy type (SampEn or FuzzEn)", type=str)
     parser.add_argument('--entropy_measure', '--entropy-measure', help="(optional) Measure to calculate an entropy (avgacc or pkacc)", type=str)
+    parser.add_argument('--stop_on_error', '--stop-on-error ', help="(optional) If activated, the code will try to exit if an error is encountered.", action='store_true')
 
     return parser
 
@@ -294,20 +297,23 @@ def main():
                                                 infantLegLengthCmDict[sub_age])
 
             except BaseException as e:
-                error_msg = f"""The movement sensor data of {sub}, {ses} \
-were not fully processed. Please check the error message: {str(e)}\n"""
-                display_msg = f"""This message is also saved in the log:\n
-    {output_dir}/{sub}/{ses}/motion/LOG.txt\n"""
-                print(error_msg)
-                print(display_msg)
-                # create sub-folders
-                # final_outdir = output_dir / sub / ses
-                # final_outdir.mkdir(parents=True, exist_ok=True)
-                # create a log file
-                with open(f'{output_dir}/{sub}/{ses}/motion/LOG.txt', 'w') as f:
-                    f.write(error_msg)
-                    f.close()
-                continue
+                if args.stop_on_error:
+                    raise e
+                else:
+                    error_msg = f"""The movement sensor data of {sub}, {ses} \
+                        were not fully processed. Please check the error message: {str(e)}\n"""
+                    display_msg = f"""This message is also saved in the log:\n
+                        {output_dir}/{sub}/{ses}/motion/LOG.txt\n"""
+                    print(error_msg)
+                    print(display_msg)
+                    # create sub-folders
+                    # final_outdir = output_dir / sub / ses
+                    # final_outdir.mkdir(parents=True, exist_ok=True)
+                    # create a log file
+                    with open(f'{output_dir}/{sub}/{ses}/motion/LOG.txt', 'w') as f:
+                        f.write(error_msg)
+                        f.close()
+                    continue
 
 
 if __name__ == "__main__":
