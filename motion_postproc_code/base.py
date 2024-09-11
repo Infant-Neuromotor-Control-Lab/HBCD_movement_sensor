@@ -1085,7 +1085,7 @@ class BaseProcess:
         return acc_arr
 
     def plot_segment(self, time_passed, duration=20, side='L', movmat=None,
-                     title=None):
+                     title=None, show=True):
         """
         A function to let user visually check movement counts
 
@@ -1172,10 +1172,19 @@ class BaseProcess:
                             self.measures.accmags[labels[0]][hull[0]],
                             c='g', linewidth=2, label='movement')
                     ax.legend(handles=[accline, pthline, nthline, velline, hl])
+                    # 9/6/2024 - mark the overlapping point
+                    prevend = (hull[0] - startidx)[-1]
                     for j in range(1, len(hull)):
-                        ax.plot(hull[j]-startidx,
+                        new_xs = hull[j] - startidx
+                        ax.plot(new_xs,
                                 self.measures.accmags[labels[0]][hull[j]],
                                 c='g', linewidth=2)
+                        if new_xs[0] == prevend:
+                            ax.scatter(x=new_xs[0],
+                                       y=self.measures.accmags[labels[0]][hull[j]][0],
+                                       color='red',
+                                       marker='s')
+                        prevend = new_xs[-1]
         # (11/9/23) Shutting off this feature
         # if title is None:
         #    title = f"{duration}s from "\
@@ -1191,7 +1200,12 @@ class BaseProcess:
             return s
         ax.xaxis.set_major_formatter(numfmt)
 
-        plt.show()
+        if not show:
+            plt.savefig(f'Segment-{int(time_passed)}_Duration_{int(duration)}_Plot.tiff',
+                        dpi=600, format='tiff',
+                        pil_kwargs={"compression": "tiff_lzw"})
+        else:
+            plt.show()
 
 
 def get_axis_offsets(ground_gs):

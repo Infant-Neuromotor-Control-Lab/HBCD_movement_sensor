@@ -502,7 +502,9 @@ class Ax6Single(BaseProcess):
                  offset=None, gs=None, **kwargs):
         super().__init__()
         reader = ReadCwa()
-        l_skdh = reader.predict(filename)
+        # pfizer people change the format of the arguments
+        # ALL THE TIME! As of Sept. 11, 2024, it's (*, file=None, ...)
+        l_skdh = reader.predict(file=filename)
         self.info.timezone = study_tz   # prioritize this step
 
         if offset is not None:

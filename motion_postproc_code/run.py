@@ -297,23 +297,25 @@ def main():
                                                 infantLegLengthCmDict[sub_age])
 
             except BaseException as e:
+                # This is to pass non-zero status to the LORIS
                 if args.stop_on_error:
                     raise e
-                else:
-                    error_msg = f"""The movement sensor data of {sub}, {ses} \
-                        were not fully processed. Please check the error message: {str(e)}\n"""
-                    display_msg = f"""This message is also saved in the log:\n
-                        {output_dir}/{sub}/{ses}/motion/LOG.txt\n"""
-                    print(error_msg)
-                    print(display_msg)
-                    # create sub-folders
-                    # final_outdir = output_dir / sub / ses
-                    # final_outdir.mkdir(parents=True, exist_ok=True)
-                    # create a log file
-                    with open(f'{output_dir}/{sub}/{ses}/motion/LOG.txt', 'w') as f:
-                        f.write(error_msg)
-                        f.close()
-                    continue
+                # If an end-user downloads data files and runs the analysis on a local machine,
+                # the following lines will be running
+                error_msg = f"""The movement sensor data of {sub}, {ses} \
+                    were not fully processed. Please check the error message: {str(e)}\n"""
+                display_msg = f"""This message is also saved in the log:\n
+                    {output_dir}/{sub}/{ses}/motion/LOG.txt\n"""
+                print(error_msg)
+                print(display_msg)
+                # create sub-folders
+                # final_outdir = output_dir / sub / ses
+                # final_outdir.mkdir(parents=True, exist_ok=True)
+                # create a log file
+                with open(f'{output_dir}/{sub}/{ses}/motion/LOG.txt', 'w') as f:
+                    f.write(error_msg)
+                    f.close()
+                continue
 
 
 if __name__ == "__main__":
