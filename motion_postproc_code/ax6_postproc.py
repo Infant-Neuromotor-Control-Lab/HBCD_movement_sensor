@@ -209,8 +209,22 @@ def calc_stats(tsvdir, outdir, sub, ses,
                                                         'recording-20',
                                                         'motion'))+'.tsv')
     # place the 'elapsed time' vector... 0.05 = 1/20
-    time_l_20 = np.arange(0, np.shape(ax6proc._Ax6__acc20[0])[0]*0.05, 0.05)
-    time_r_20 = np.arange(0, np.shape(ax6proc._Ax6__acc20[1])[0]*0.05, 0.05)
+    # Error reported (10/2/2024) - floating point error
+    # ex. >> np.shape(ax6.proc_Ax6__acc20[0]) = 14742317
+    #     >> 14743217 * 0.05 = 737115.8500000001
+    #     >> np.arange(0, 737115.8500000001, 0.05) will yield 14742318,
+    #     one sample more than the original number of samples,
+    #     because the range includes 737115.85 - that's not what's wanted.
+    #     This will cause an error, because pyarrow.table will expect
+    #     incoming data to have 14742318 rows, but will receive
+    #     14742317 rows.
+    # Rounding up the number (ex. np.round(14743217 * 0.05, 3)) would
+    # address this error.
+
+    left_nrow = np.round(np.shape(ax6proc._Ax6__acc20[0])[0]*0.05, 3)
+    right_nrow = np.round(np.shape(ax6proc._Ax6__acc20[1])[0]*0.05, 3)
+    time_l_20 = np.arange(0, left_nrow, 0.05)
+    time_r_20 = np.arange(0, right_nrow, 0.05)
     left_pa_table_re20 = pyarrow.table([time_l_20,
                                         ax6proc._Ax6__acc20[0][:, 0] * g_val,
                                         ax6proc._Ax6__acc20[0][:, 1] * g_val,
